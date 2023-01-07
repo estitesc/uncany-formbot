@@ -1,15 +1,14 @@
 # uncany-formbot
 boilerplate for a modular FSM chatbot to replace a form, access via a web GUI or Twilio SMS
 
-# MORE ON THIS
-
-Building Blocks of LLM Based Chatbots: Using Responders and Interpreters to Build a Simple FSM Chatbot
+# Building Blocks of LLM Based Chatbots
+Using Responders and Interpreters to Build a Simple FSM Chatbot
 
 If you want to build a chatbot with an LLM you'll likely start with a pattern that I'm calling a Responder. A responder is a prompt that gives some instructions and then feeds in a dialog buffer, requesting that the next line of dialog be filled in. 
 
 # Here's an example of a basic responder:
 
-"""
+```
 The AI and the HUMAN are having a conversation about life, liberty and the pursuit of happiness. The AI keeps asking funny questions in response to everything the HUMAN says.
 
 AI: So what even IS democracy?
@@ -19,11 +18,11 @@ HUMAN: haha what?
 AI: What indeed? What Indeed?
 HUMAN: I thought you were supposed to be an Americana bot.
 AI:
-"""
+```
 
-You could use this prompt with a davinci GPT-3 model and get a good response with a stop token of "HUMAN". The dialog buffer at the end of the prompt is pulled in from your data. You could pass in as much dialog history as you want in that buffer up to the token limit for the LLM you are using. 
+You could use this prompt with a davinci GPT-3 model with stop sequence of "HUMAN" and get a good response. The dialog buffer at the end of the prompt is pulled in from your user's most recent conversation history. You could pass in as much dialog history as you want in that buffer up to the token limit for the LLM. 
 
-You're probably familiar with this basic type of chatbot prompting. It's pretty good if you mainly need to give the AI some kind of loose agenda, a personality, or allow it to reference a body of static knowledge, as all of that could be added to the prefix [could add examples of each of these]
+You're probably familiar with this basic type of chatbot prompting. It's pretty good if you mainly need to give the AI some kind of loose agenda, a personality, or allow it to reference a body of static knowledge, as all of that could be added to the prefix.
 
 However, this type of prompt hits some limits, for one, if you want it to remember more of the conversation and you choose a long dialog buffer length, the content of the dialog buffer will take up more and more of the prompt and eventually the convo can "run away" pretty far from the direction the prefix is setting. This is not always a problem, but for our purposes in trying to build direct dialog agents, we don't want run away behavior.
 
@@ -31,7 +30,7 @@ One approach to improve performance is to create a few-shot based responder that
 
 # Here's an example:
 
-"""
+```
 The AI in the following conversations wants to learn about the Team that the user is on, and so it will change the course of the conversation to ask questions.
 
 Example:
@@ -66,27 +65,27 @@ Example:
 
 ${dialog}
 AI:
-"""
+```
 
 In the above example I've replaced the active dialog buffer with ${dialog} indicating that in your prompt composition code you'd inject that compiled buffer there. 
 
-With the few-shot dialog responder, we now are being much more prescriptive about the types of conversations that the AI should have with the user. This doesn't totally solve the runaway problem though, but especially if we use a shorter dialog buffer, it controls it more than in our initial zero-shot example. 
+With the few-shot dialog responder, we now more prescriptive about the types of conversations that the AI should have with the user. This doesn't totally solve the runaway problem, but especially if we use a shorter dialog buffer, it controls it more than in our initial zero-shot example. 
 
-Another consequence of the few-shot example is that we've now limited the scope of our conversation somewhat to the few questions that fit well into a series of few shot examples. In LM's with large token limits we can surely add quite a bit more than in my example, but if you want to cover a range of few-shot examples, it does start to add up and create a long prompt. 
+Another consequence of the few-shot example is that we've now limited the scope of our conversation somewhat to the few questions that fit well into a series of few-shot examples. In LM's with large token limits we can surely add quite a bit more than in my example, but if you want to cover a range of few-shot examples, it does start to add up and create an overly long prompt. 
 
-So we gained specificity with the few-shot but we lost a bit of open-endedness, and we've narrowed the scope considerably. One logical next step is to consider whether you might use a series of few-shot based responders. That way, you can ask a certain series of questions or cover some series of topics until you're ready to move on, then focus on the AI on a different set of examples. 
+So we gained specificity with the few-shot but we lost open-endedness, and we've narrowed the scope considerably. One logical next step is to consider whether you might use a series of few-shot based responders. That way, you can ask a certain series of questions or cover some series of topics until you're ready to move on, then focus on the AI on a different set of examples. 
 
 In essence, we want to create a finite state machine of prompts to direct the flow of our chatbot. But how will we know when we've met the conditions to change our state in the FSM? 
 
 This is where interpreters come into play. 
 
-An interpreter is another type of prompt, not designed to generate a line of dialog but rather to analyze the existing dialog and extract certain entities or semantic features which can then be considered in the heuristic application logic, for example to set a value in a database, or advance the chatbot's FSM state.
+An interpreter is another type of prompt, not designed to generate a line of dialog but rather to analyze the existing dialog and extract certain entities or semantic features which can then be considered in the heuristic application logic, for example to set a value in a database, or advance the chatbot's FSM state. The interpreter is similar to a slot-filler in classic dialog code, but with more flexibility. 
 
 Interpreters are best when outputting JSON. This JSON must then be parsed and validated to ensure that it's not corrupted, etc.
 
 Here's an example of just the prompt piece of an interpreter:
 
-"""
+```
 Find whether the HUMAN has a team member or is working alone or if you can't tell from the dialog. If they have a team member, respond with {"hasTeam": "TEAM"}, if they are alone respond with {"hasTeam": "SOLO"} and if you can't tell respond with {"hasTeam": null}.
 
 Conversation:
@@ -110,10 +109,10 @@ Conversation:
 
 ${dialog}
 RESPONSE:
-"""
+```
 
-In this case, we are just looking for one property, "hasTeam" but you could imagine looking for more. 
+In this case, we are just looking for one property, "hasTeam" but you could ask to output a series of different values. 
 
-This interpreter allows you to do things like "ask about the user's business until they have expressed to raise more funding, then switch to "ptich my firm" mode. 
+This interpreter allows you to do things like "ask about the user's business until they have expressed to raise more funding, then switch to "pitch my firm" mode. 
 
-Combining responders and interpreters allows you to essentially "script" the conversation the AI will have with the user and use the yield to take actions in other API's etc, after you get entities back from the interpreter.
+Combining responders and interpreters allows you to "script" the conversation the AI will have with the user and use the yield to take actions in other API's etc, after you get entities back from the interpreter.
