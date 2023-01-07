@@ -1,13 +1,13 @@
 # uncany-formbot
 boilerplate for a modular FSM chatbot to replace a form, access via a web GUI or Twilio SMS
 
-MORE ON THIS
+# MORE ON THIS
 
 Building Blocks of LLM Based Chatbots: Using Responders and Interpreters to Build a Simple FSM Chatbot
 
 If you want to build a chatbot with an LLM you'll likely start with a pattern that I'm calling a Responder. A responder is a prompt that gives some instructions and then feeds in a dialog buffer, requesting that the next line of dialog be filled in. 
 
-Here's an example of a basic responder:
+# Here's an example of a basic responder:
 
 """
 The AI and the HUMAN are having a conversation about life, liberty and the pursuit of happiness. The AI keeps asking funny questions in response to everything the HUMAN says.
@@ -29,7 +29,7 @@ However, this type of prompt hits some limits, for one, if you want it to rememb
 
 One approach to improve performance is to create a few-shot based responder that gives examples of the types of conversations the AI should be trying to have with the human. 
 
-Here's an example:
+# Here's an example:
 
 """
 The AI in the following conversations wants to learn about the Team that the user is on, and so it will change the course of the conversation to ask questions.
