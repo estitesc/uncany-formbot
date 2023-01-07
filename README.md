@@ -77,7 +77,9 @@ So we gained specificity with the few-shot but we lost open-endedness, and we've
 
 In essence, we want to create a finite state machine of prompts to direct the flow of our chatbot. But how will we know when we've met the conditions to change our state in the FSM? 
 
-This is where interpreters come into play. 
+This is where interpreters come into play.
+
+# Interpreter Pattern
 
 An interpreter is another type of prompt, not designed to generate a line of dialog but rather to analyze the existing dialog and extract certain entities or semantic features which can then be considered in the heuristic application logic, for example to set a value in a database, or advance the chatbot's FSM state. The interpreter is similar to a slot-filler in classic dialog code, but with more flexibility. 
 
