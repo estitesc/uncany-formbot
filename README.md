@@ -118,3 +118,111 @@ In this case, we are just looking for one property, "hasTeam" but you could ask 
 This interpreter allows you to do things like "ask about the user's business until they have expressed to raise more funding, then switch to "pitch my firm" mode. 
 
 Combining responders and interpreters allows you to "script" the conversation the AI will have with the user and use the yield to take actions in other API's etc, after you get entities back from the interpreter.
+
+# Interpreter Output Processor
+
+This is pretty straightforward but when you pull JSON from an interpreter prompt you should run a validator function to ensure that you got outputs in the proper format and it can be helpful to also create an `isValid` param per entity.
+
+```
+const procStartedDriving = (response: string) => {
+  try {
+    const parsed = JSON.parse(`${response}}`);
+
+    const startedDrivingValid =
+      typeof parsed.startedDriving === "string" &&
+      ["ON", "OFF"].includes(parsed.startedDriving);
+
+    return {
+      ...parsed,
+      startedDrivingValid,
+    };
+  } catch (e) {
+    console.log("error parsing JSON from completion", e);
+  }
+
+  // Default / error return case.
+  return {
+    startedDriving: "",
+    startedDrivingValid: false,
+  };
+};
+```
+
+If you look closely at what I'm parsing you'll notice that I am adding an extra close brace to the end of the completion string. That's because I used the close curly as a stop sequence for the LLM call on the interpreter. 
+
+You could just as easily encapsulate the entire JSON in a mark like a triple quote """ and this would be more robust to things like complex JSON that might include a curly brace if you're ok adding a few more tokens to your prompt. 
+
+# Composing the FSM Bot
+
+Now with responders and interpreters, you've all the ingredients to put together a state based FSM bot that will go through a series of different responders in accordance with the output of the interpreters (or other heuristic factors such as timing, or interaction with external API's). 
+
+I like to think of the composition phase as similar to building a GUI with React starting with an index page, then splitting into progressively smaller components until you reach the leaf nodes that are responsible for rendering the actual HTML. However in this case, the leaf nodes are making the language model calls and handling their responses rather than specifying HTML primitives.
+
+Like the prompts, the handlers have certain common patterns that correspond to a responder or an interpreter, but ultimately you could handle the completion in any way you can dream up, including spinning up more language model calls, as long as you are careful not to create what could be very expensive loops.
+
+## Leaf Nodes
+
+Let's start with most basic leaf node (ProgramNode). This could be your entire app if you just wanted to run a single responder / interpreter. All this does is run a simple conversation asking for the user's name, then pull that name into a data store. You can't see all of that logic here but let's just look at how it will appear in the node structure code:
+
+```
+const AskName: ProgramNode = (threadProps: ThreadProps) => {
+  const runLangNode = useRunLangNodeAsync(threadProps);
+
+  return async () => {
+    const generateDialog: LanguageNode = {
+      promptTemplate: askNameResponder,
+      gptConfig: {
+        temperature: 0.9,
+        max_tokens: 100,
+        stop: "HUMAN",
+      },
+      completionHandler: sendReply,
+    };
+
+    await runLangNode(generateDialog);
+
+    const interpretName: LanguageNode = {
+      promptTemplate: nameInterpreter,
+      gptConfig: {
+        temperature: 0.4,
+        max_tokens: 25,
+        stop: "}",
+      },
+      completionHandler: processName,
+    };
+
+    const nameResult = await runLangNode(interpretName);
+    if (nameResult.nameValid) {
+      setThreadData(threadProps.id, {
+        name: nameResult.name,
+      });
+    }
+  };
+};
+```
+The `useRunLangNodeAsync`is a special LLM caller that I built for composing these kinds of structures. It's pretty simple, just calls the LLM with the config you specify and then passes the response through a handler function, returning the output of that function for further handling in the ProgramNode.
+
+## Parent ProgramNodes
+
+Now you can see how we'd arrange a series of leafs to create the FSM chatbot. For example we could have a top level Root ProgramNode that routes to `AskName` if name is still not given, and otherwise moves on to `TalkAboutWeather`.
+
+```
+const Root: ProgramNode = (threadProps: ThreadProps) => {
+  return async () => {
+    if (
+      !threadProps.threadData.name
+    ) {
+      await AskName(threadProps)();
+    } else {
+      await TalkAboutWeather(threadProps)();
+    }
+  };
+};
+```
+
+And you could easily use this structure to build out a more complex form replacement bot that does slot-filling for a variety of values, or add heuristic logic such as "move on after staying in this convo state for 10 rounds of dialog" which is sometimes valuable to add as a backstop to slot-filling type structures since in LLM bots it's often possible for a runaway conversation to leave behind the thread that queries for the needed value.
+
+In a future chapter, I'll dive into strategies for bringing the conversation back around to asking for the needed slot-fill value, or just to bring the conversation back into alignment with the target few-shot examples if it's starting to go rogue. 
+
+Yay, while you'll still need to use some of the boilerplate functions that you can find in this repo to run the conversation, you now have all the tools you need to build your own multi-stage few-shot bots.
+
