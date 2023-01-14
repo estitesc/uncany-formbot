@@ -226,3 +226,11 @@ In a future chapter, I'll dive into strategies for bringing the conversation bac
 
 Yay, while you'll still need to use some of the boilerplate functions that you can find in this repo to run the conversation, you now have all the tools you need to build your own multi-stage few-shot bots.
 
+# Future Plans
+
+In the future I would like to create a dynamic formbot which is able to pull in different form structures dynamically based on embeddings matches between the current dialog and various archetypal conversations.
+
+One potential challenge is to find a way of fusing the canon matches that you hard coded the bot to have conversations (i.e. responders) that have corresponding interpreters plus also feeding in conversational context like we do in uncany-membot. Composing both into a single prompt structure allows for both the guidance of the structure of the conversation, and the content. 
+
+
+
